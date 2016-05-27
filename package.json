@@ -1,0 +1,41 @@
+{
+  "name": "bluesky-viewer-service",
+  "version": "1.0.0",
+  "description": "A service to register (and deploy?) collaboratory viewers",
+  "main": "app.js",
+  "scripts": {
+    "start": "node ./bin/www",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zanitete/bluesky-viewer-service.git"
+  },
+  "keywords": [
+    "collaboratory",
+    "hbp",
+    "viewer"
+  ],
+  "author": "Stefano Zaninetta",
+  "private": true,
+  "bugs": {
+    "url": "https://github.com/zanitete/bluesky-viewer-service/issues"
+  },
+  "homepage": "https://github.com/zanitete/bluesky-viewer-service",
+  "dependencies": {
+    "body-parser": "~1.13.2",
+    "cookie-parser": "~1.3.5",
+    "debug": "~2.2.0",
+    "express": "~4.13.1",
+    "extend": "^3.0.0",
+    "jade": "~1.11.0",
+    "mongoose": "~4.4.19",
+    "morgan": "~1.6.1",
+    "npm-registry-client": "^7.1.0",
+    "request": "^2.72.0",
+    "request-promise": "^3.0.0",
+    "serve-favicon": "~2.3.0",
+    "tar": "^2.2.1",
+    "tar.gz": "^1.0.5"
+  }
+}
