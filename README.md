@@ -1,9 +1,10 @@
 # bluesky-viewer-service
 A service to register (and deploy?) collaboratory viewers 
 
-### Run locally
-set MONGODB_PWD env var
+## Run locally
+
 ```
+npm install
 export MONGODB_PWD=<password_here>
 ```
 
