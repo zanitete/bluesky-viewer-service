@@ -38,7 +38,7 @@ function init(app) {
     
     // register a viewer
     .post(function(req, res) {
-        var baseUrl = 'http://localhost:3000/';
+        var baseUrl = 'https://localhost:3000/';
 
         var viewer = new Viewer();
         viewer.name = req.body.name;
@@ -72,12 +72,29 @@ function init(app) {
 
     // GET viewers listing.
     .get(function(req, res, next) {
-      Viewer.find(function(err, viewers) {
+      if(!req.query.mimetype) {
+        Viewer.find(function(err, viewers) {
+          if (err) {
+            res.send(err);
+          } else {
+            res.json(viewers);
+          }
+        });
+      } else {
+        Viewer.find({'mimeType' : new RegExp(req.query.mimetype)}, function(err, docs) {
         if (err) {
           res.send(err);
+        } else {
+          res.json(docs);
         }
-        res.json(viewers);
       });
+      }
+    });
+
+
+  router.route('/viewer/search')
+    .get(function(req, res, next) {
+      
     });
 
   router.route('/viewer/:viewer_id')
@@ -86,8 +103,9 @@ function init(app) {
           Viewer.findById(req.params.viewer_id, function(err, viewer) {
             if (err) {
               res.send(err);
+            } else {
+              res.json(viewer);
             }
-            res.json(viewer);
         });
       })
 
