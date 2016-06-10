@@ -1,15 +1,20 @@
 function init(app) {
-  var express  = require('express');
-  var mongoose = require('mongoose');
-  var request  = require('request');
-  var rp       = require('request-promise');
-  var extend   = require('extend');
-  var path     = require('path');
-  var targz    = require('tar.gz');
+  var debug      = require('debug')('app:apis');
+  var express    = require('express');
+  var mongoose   = require('mongoose');
+  var request    = require('request');
+  var rp         = require('request-promise');
+  var extend     = require('extend');
+  var os         = require('os');
+  var fs         = require('fs');
+  var path       = require('path');
+  var targz      = require('tar.gz');
+  var uuid       = require('node-uuid');
+  var Deferred   = require("promised-io/promise").Deferred;
 
-  var Viewer   = require('../models/viewer');
+  var Viewer = require('../models/viewer');
 
-  var nodeModulesBasePath = '/tmp/bluesky-viewer-node-modules/';
+  var nodeModulesBasePath = path.join(os.tmpdir(), '/bluesky-viewer-node-modules/');
 
   // init express router
   var router = express.Router();
@@ -21,11 +26,11 @@ function init(app) {
   function npmUrl(name, version) {
     return 'http://bbpteam.epfl.ch/repository/npm/' + name + '/' + version;
   }
-  // var db = mongoose.connection;
-  // db.on('error', console.error.bind(console, 'connection error:'));
-  // db.once('open', function() {
-  //   console.log('we are connected!');
-  // });
+  var db = mongoose.connection;
+  db.on('error', debug.bind(console, 'connection error:'));
+  db.once('open', function() {
+    debug('we are connected!');
+  });
 
   // middleware to use for all requests
   router.use(function(req, res, next) {
@@ -35,11 +40,10 @@ function init(app) {
   });
 
   router.route('/viewer')
-    
+
     // register a viewer
     .post(function(req, res) {
-        var baseUrl = 'https://localhost:3000/';
-
+        var baseUrl = 'https://localhost';
         var viewer = new Viewer();
         viewer.name = req.body.name;
         viewer.mimeType = req.body.mimeType;
@@ -52,7 +56,41 @@ function init(app) {
           json: true
         })
         .then(extractTar(nodeModulesBasePath))
-        .then(addRoute(baseUrl))
+        .then(addRoute)
+        .then(function(pkgInfo) {
+          var path = pkgInfo.path;
+          var portfinder = require('portfinder');
+          var https      = require('https');
+          var app    = require('../app');
+          var deferred = new Deferred();
+
+          portfinder.getPort(function(err, port) {
+            app.set('port', port);
+            app.use('/static', express.static(pkgInfo.path));
+
+            var server = https.createServer({
+              key: fs.readFileSync('bin/key.pem'),
+              cert: fs.readFileSync('bin/cert.pem')
+            }, app);
+
+            if(!err) {
+              server.listen(port);
+              server.on('error', logError);
+            } else {
+              logError(err);
+            }
+
+            deferred.resolve(extend(pkgInfo, {
+              url: baseUrl + ':' + port + '/' + pkgInfo.route
+            }));
+          });
+
+          function logError(err) {
+            console.log(error);
+          }
+
+          return deferred.promise;
+        })
         .then(function(pkgInfo) {
           console.log('save', pkgInfo);
           viewer.url = pkgInfo.url;
@@ -94,7 +132,7 @@ function init(app) {
 
   router.route('/viewer/search')
     .get(function(req, res, next) {
-      
+
     });
 
   router.route('/viewer/:viewer_id')
@@ -121,27 +159,43 @@ function init(app) {
 
   function extractTar(basePath) {
     return function(pkgInfo) {
-      console.log('extractTar', pkgInfo);
+      var deferred = new Deferred();
       var destPath = path.join(basePath, pkgInfo.name, pkgInfo.version);
       var read = request.get(pkgInfo.dist.tarball);
-      var write = targz().createWriteStream(destPath);
-      read.pipe(write);
 
-      return {
-        name: pkgInfo.name,
-        version: pkgInfo.version,
-        path: path.join(destPath, 'package/dist')
-      };
+      // write on temp file
+      var tmpFile = path.join(os.tmpdir(), uuid.v4() + '.tar.gz');
+      var writeTar = fs.createWriteStream(tmpFile);
+      writeTar.on('finish', downloadComplete);
+
+      read.pipe(writeTar);
+
+      function downloadComplete() {
+        // extract tar content
+        targz().extract(tmpFile, destPath)
+          .then(function() {
+            console.log('Job done!');
+            deferred.resolve({
+              name: pkgInfo.name,
+              version: pkgInfo.version,
+              path: path.join(destPath, 'package/dist')
+            });
+          })
+          .catch(function(err){
+            console.log('Something is wrong ', err.stack);
+            deferred.reject(err);
+          });
+      }
+
+      return deferred.promise;
     };
   }
 
-  function addRoute(baseUrl) {
-    return function(pkgInfo) {
-      var route = path.join('static', pkgInfo.name, pkgInfo.version, 'package/dist');
-      return extend(pkgInfo, {
-        url: baseUrl + route
-      });
-    };
+  function addRoute(pkgInfo) {
+    var route = path.join('static', pkgInfo.name, pkgInfo.version, 'package/dist');
+    return extend(pkgInfo, {
+      route: route
+    });
   }
 
   return router;
