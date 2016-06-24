@@ -1,29 +1,22 @@
 var express = require('express');
 var path = require('path');
+var os         = require('os');
 var logger = require('morgan');
-// var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
 var cors = require('cors');
 
 var app = express();
 
-// var routes = require('./routes/index');
 var apis = require('./routes/apis')(app);
-
-// view engine setup
-// app.set('views', path.join(__dirname, 'views'));
-// app.set('view engine', 'jade');
+var viewers = require('./util/viewers')(app);
 
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
-// app.use(cookieParser());
-// app.use(express.static(path.join(__dirname, 'public')));
 
-// app.use('/', routes);
 app.use('/v0/api', apis);
-app.use('/static', express.static('/tmp/bluesky-viewer-node-modules/'));
+app.use(viewers.contextPath, express.static(viewers.baseFilePath));
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

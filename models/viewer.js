@@ -1,7 +1,7 @@
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
 
-var ViewerSchema   = new Schema({
+var ViewerSchema  = new Schema({
     name: String,
     mimeType: String,
     packageName: String,

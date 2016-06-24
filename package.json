@@ -30,6 +30,7 @@
     "express": "~4.13.1",
     "extend": "^3.0.0",
     "jade": "~1.11.0",
+    "lodash": "^4.13.1",
     "mongoose": "~4.4.19",
     "morgan": "~1.6.1",
     "node-promise": "^0.5.12",
