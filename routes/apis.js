@@ -2,6 +2,7 @@ function init(app) {
   var debug      = require('debug')('app:apis');
   var express    = require('express');
   var mongoose   = require('mongoose');
+  var _          = require('lodash');
 
   var Viewer  = require('../models/viewer');
   var viewers = require('../util/viewers')(app);
@@ -19,6 +20,15 @@ function init(app) {
   db.on('error', debug.bind(console, 'connection error:'));
   db.once('open', function() {
     debug('we are connected!');
+  });
+
+  // install and start servers to serve registered viewers
+  Viewer.find(function(err, viewerList) {
+    _.forEach(viewerList, function(viewer) {
+      var url = viewers.install(viewer);
+      viewer.url = url;
+      viewer.save();
+    });
   });
 
   // middleware to use for all requests
@@ -63,7 +73,9 @@ function init(app) {
           if (err) {
             res.send(err);
           } else {
-            res.json(viewers);
+            res.json(_.map(viewers, function(v) {
+              return localizeUrl(v, req);
+            }));
           }
         });
       } else {
@@ -83,7 +95,7 @@ function init(app) {
           if (err) {
             res.send(err);
           } else {
-            res.json(viewer);
+            res.json(localizeUrl(viewer));
           }
       });
     })
@@ -99,7 +111,7 @@ function init(app) {
     });
 
   function localizeUrl(viewer, req) {
-    var parsedUrl = viewer.url.replace(viewers.hostVar, req.host);
+    var parsedUrl = viewer.url.replace(viewers.hostVar, req.hostname);
     viewer.url = parsedUrl;
     return viewer;
   }
